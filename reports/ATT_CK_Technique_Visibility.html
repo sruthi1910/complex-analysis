@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ATT&CK Technique Visibility</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1720;
+    --surface:#161F2B;
+    --surface-2:#1D2838;
+    --surface-3:#243247;
+    --border:#2A3647;
+    --text:#E6EDF3;
+    --text-muted:#8B98A8;
+    --text-faint:#5B6B7E;
+    --accent:#3FD1C7;
+    --accent-dim:rgba(63,209,199,0.14);
+    --observed:#3FB950;
+    --observed-bg:rgba(63,185,80,0.13);
+    --partial:#D29922;
+    --partial-bg:rgba(210,153,34,0.15);
+    --gap:#F85149;
+    --gap-bg:rgba(248,81,73,0.14);
+    --font-ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --font-mono:'JetBrains Mono','Courier New',monospace;
+  }
+  :root[data-theme="light"]{
+    --bg:#F3F5F8;
+    --surface:#FFFFFF;
+    --surface-2:#F0F3F7;
+    --surface-3:#E6EAF0;
+    --border:#DCE2EA;
+    --text:#161F2B;
+    --text-muted:#5B6B7E;
+    --text-faint:#8B98A8;
+    --accent:#0E8E85;
+    --accent-dim:rgba(14,142,133,0.1);
+    --observed:#1A7F37;
+    --observed-bg:rgba(26,127,55,0.1);
+    --partial:#9A6700;
+    --partial-bg:rgba(154,103,0,0.1);
+    --gap:#CF222E;
+    --gap-bg:rgba(207,34,46,0.1);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-ui);
+    -webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;}
+  }
+
+  .wrap{
+    max-width:980px;
+    margin:0 auto;
+    padding:48px 24px 64px;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    margin-bottom:32px;
+  }
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--accent);
+    letter-spacing:0.02em;
+    margin:0 0 10px;
+  }
+  h1{
+    font-size:clamp(26px,4vw,34px);
+    line-height:1.15;
+    margin:0 0 10px;
+    font-weight:800;
+    letter-spacing:-0.01em;
+  }
+  .lede{
+    color:var(--text-muted);
+    font-size:15.5px;
+    line-height:1.55;
+    max-width:62ch;
+    margin:0 0 20px;
+  }
+  .note{
+    border-left:3px solid var(--accent);
+    background:var(--surface);
+    border-radius:0 10px 10px 0;
+    padding:14px 18px;
+    font-size:13.5px;
+    line-height:1.6;
+    color:var(--text-muted);
+    max-width:72ch;
+  }
+  .note strong{color:var(--text); font-weight:600;}
+
+  /* ---------- stats ---------- */
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin:36px 0;
+  }
+  .stat{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px 22px;
+  }
+  .stat .value{
+    font-family:var(--font-mono);
+    font-size:32px;
+    font-weight:700;
+    line-height:1;
+    margin-bottom:8px;
+  }
+  .stat .value.gap-color{color:var(--gap);}
+  .stat .label{
+    color:var(--text-muted);
+    font-size:13px;
+  }
+
+  /* ---------- section headings ---------- */
+  .section-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    margin:44px 0 16px;
+    flex-wrap:wrap;
+  }
+  .section-head h2{
+    font-size:17px;
+    font-weight:700;
+    margin:0;
+  }
+  .section-sub{
+    color:var(--text-faint);
+    font-size:13px;
+  }
+
+  /* ---------- chart ---------- */
+  .chart-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:28px 26px 22px;
+  }
+  .chart-grid{
+    display:grid;
+    grid-template-columns:200px 1fr 46px;
+    column-gap:16px;
+    row-gap:16px;
+  }
+  .bar-row{
+    display:contents;
+  }
+  .bar-label .name{
+    font-size:13.5px;
+    font-weight:600;
+    line-height:1.3;
+  }
+  .bar-label .id{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-faint);
+    margin-top:3px;
+  }
+  .bar-label{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .track{
+    position:relative;
+    background:var(--surface-2);
+    border-radius:6px;
+    height:26px;
+    align-self:center;
+    overflow:hidden;
+  }
+  .fill{
+    position:absolute;
+    top:0; left:0; bottom:0;
+    border-radius:6px;
+    width:0;
+    transition:width .6s cubic-bezier(.22,.9,.3,1), opacity .25s ease;
+  }
+  .fill.observed{background:var(--observed);}
+  .fill.partial{background:var(--partial);}
+  .fill.gap{background:var(--gap);}
+  .bar-value{
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:13.5px;
+    text-align:right;
+    align-self:center;
+  }
+  .bar-value.observed{color:var(--observed);}
+  .bar-value.partial{color:var(--partial);}
+  .bar-value.gap{color:var(--gap);}
+
+  .axis-row{display:contents;}
+  .axis-spacer{}
+  .axis-ticks{
+    display:flex;
+    justify-content:space-between;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-faint);
+    padding-top:2px;
+    margin-top:-4px;
+  }
+
+  body.show-gaps .bar-row:not(.is-gap) .fill{opacity:.22;}
+  body.show-gaps .bar-row:not(.is-gap) .bar-value{opacity:.35;}
+  body.show-gaps .bar-row:not(.is-gap) .bar-label{opacity:.35;}
+
+  /* ---------- controls ---------- */
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin:0 0 14px;
+  }
+  .switch{
+    position:relative;
+    display:inline-flex;
+    width:40px;
+    height:23px;
+    flex:none;
+  }
+  .switch input{
+    position:absolute;
+    opacity:0;
+    width:100%;
+    height:100%;
+    margin:0;
+    cursor:pointer;
+  }
+  .switch .track-ui{
+    position:absolute;
+    inset:0;
+    background:var(--surface-3);
+    border:1px solid var(--border);
+    border-radius:999px;
+    transition:background .2s ease, border-color .2s ease;
+  }
+  .switch .knob{
+    position:absolute;
+    top:2px; left:2px;
+    width:17px; height:17px;
+    border-radius:50%;
+    background:var(--text-muted);
+    transition:transform .2s ease, background .2s ease;
+  }
+  .switch input:checked + .track-ui{
+    background:var(--accent-dim);
+    border-color:var(--accent);
+  }
+  .switch input:checked + .track-ui + .knob{
+    transform:translateX(17px);
+    background:var(--accent);
+  }
+  .switch input:focus-visible + .track-ui{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+  .controls-label{
+    font-size:13.5px;
+    color:var(--text);
+    cursor:pointer;
+    user-select:none;
+  }
+  .controls-count{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-faint);
+    margin-left:4px;
+  }
+
+  /* ---------- table ---------- */
+  .table-scroll{
+    overflow-x:auto;
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:var(--surface);
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13.5px;
+    min-width:720px;
+  }
+  thead th{
+    text-align:left;
+    font-size:11.5px;
+    font-weight:600;
+    color:var(--text-faint);
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  tbody td{
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr{transition:background .2s ease;}
+  tbody tr:hover{background:var(--surface-2);}
+  .tech-name{font-weight:600;}
+  .tech-id{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--text-muted);
+    white-space:nowrap;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:4px 10px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .pill::before{
+    content:"";
+    width:6px;height:6px;
+    border-radius:50%;
+  }
+  .pill.observed{color:var(--observed); background:var(--observed-bg);}
+  .pill.observed::before{background:var(--observed);}
+  .pill.partial{color:var(--partial); background:var(--partial-bg);}
+  .pill.partial::before{background:var(--partial);}
+  .pill.gap{color:var(--gap); background:var(--gap-bg);}
+  .pill.gap::before{background:var(--gap);}
+  .score-cell{
+    font-family:var(--font-mono);
+    font-weight:700;
+  }
+  .evidence-cell{
+    color:var(--text-muted);
+    line-height:1.5;
+    max-width:300px;
+  }
+  tr.data-row[data-gap="false"]{}
+  body.show-gaps tr.data-row[data-gap="false"]{display:none;}
+  .empty-state{
+    display:none;
+    padding:32px 16px;
+    text-align:center;
+    color:var(--text-faint);
+    font-size:13.5px;
+  }
+  body.show-gaps.no-gap-rows .empty-state{display:block;}
+
+  footer{
+    margin-top:40px;
+    padding-top:18px;
+    border-top:1px solid var(--border);
+    color:var(--text-faint);
+    font-size:12px;
+    line-height:1.6;
+  }
+
+  @media (max-width:640px){
+    .wrap{padding:32px 16px 48px;}
+    .stats{grid-template-columns:1fr; }
+    .chart-grid{grid-template-columns:118px 1fr 40px; column-gap:10px;}
+    .bar-label .name{font-size:12.5px;}
+    .chart-card{padding:20px 16px 18px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Incident telemetry review</p>
+    <h1>ATT&amp;CK technique visibility</h1>
+    <p class="lede">For each technique identified in the investigation, whether the available logs captured it at all — not whether a detection rule existed or would have fired.</p>
+    <p class="note"><strong>What this score means.</strong> No data on existing detection rules was available for this review. Each score reflects log visibility only: 100 = the technique is observed directly in collected logs, 50 = partially observed, 0 = not observed in any available source.</p>
+  </header>
+
+  <section class="stats">
+    <div class="stat">
+      <div class="value" id="statCount">0</div>
+      <div class="label">Techniques assessed</div>
+    </div>
+    <div class="stat">
+      <div class="value" id="statAvg">0</div>
+      <div class="label">Average visibility score</div>
+    </div>
+    <div class="stat">
+      <div class="value gap-color" id="statGaps">0</div>
+      <div class="label">Techniques with a visibility gap</div>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <h2>Visibility by technique</h2>
+    <span class="section-sub">Score out of 100</span>
+  </div>
+  <div class="chart-card">
+    <div class="chart-grid" id="chartGrid"></div>
+    <div class="axis-row">
+      <div class="axis-spacer"></div>
+      <div class="axis-ticks"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+      <div></div>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <h2>Technique detail</h2>
+  </div>
+  <div class="controls">
+    <span class="switch">
+      <input type="checkbox" id="gapToggle" aria-describedby="gapToggleLabel">
+      <span class="track-ui"></span>
+      <span class="knob"></span>
+    </span>
+    <label for="gapToggle" class="controls-label" id="gapToggleLabel">Show gaps only</label>
+    <span class="controls-count" id="gapCount"></span>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Technique</th>
+          <th>ID</th>
+          <th>Visibility</th>
+          <th>Score</th>
+          <th>Evidence</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty-state">No gaps match the current filter — every technique is fully observed.</div>
+  </div>
+
+  <footer>
+    Visibility is based solely on the logs collected for this incident. A technique scored 100 means evidence of it was found in those logs — it does not confirm a detection rule exists or would have alerted on it.
+  </footer>
+
+</div>
+
+<script>
+  const DATA = [
+    {
+      name: "Private Keys / Credentials from Password Stores",
+      id: "T1552.004 (and T1555)",
+      visibility: "Observed",
+      score: 100,
+      evidence: "WID audit 33205, Sysmon 18, 4662 DKM reads"
+    },
+    {
+      name: "Forge Web Credentials: SAML Tokens",
+      id: "T1606.002",
+      visibility: "Not observed",
+      score: 0,
+      evidence: "No Azure AD sign-in logs or AD FS 1200/1202 events"
+    },
+    {
+      name: "Additional Cloud Roles",
+      id: "T1098.003",
+      visibility: "Observed",
+      score: 100,
+      evidence: "Azure AD audit: Mail.ReadWrite added, AllPrincipals consent"
+    },
+    {
+      name: "Additional Cloud Credentials",
+      id: "T1098.001",
+      visibility: "Observed",
+      score: 100,
+      evidence: "Azure AD audit: SimuLandCreds secret added"
+    },
+    {
+      name: "Application Access Token",
+      id: "T1550.001",
+      visibility: "Partial",
+      score: 50,
+      evidence: "Mail read observed; link to SimuLandApp is medium confidence"
+    },
+    {
+      name: "Remote Email Collection",
+      id: "T1114.002",
+      visibility: "Observed",
+      score: 100,
+      evidence: "MailItemsAccessed (7 messages)"
+    }
+  ];
+
+  function statusClass(visibility){
+    if (visibility === "Observed") return "observed";
+    if (visibility === "Partial") return "partial";
+    return "gap";
+  }
+
+  function isGap(score){ return score < 100; }
+
+  // ---- render chart ----
+  const chartGrid = document.getElementById("chartGrid");
+  DATA.forEach(t => {
+    const cls = statusClass(t.visibility);
+    const gap = isGap(t.score);
+    const row = document.createElement("div");
+    row.className = "bar-row" + (gap ? " is-gap" : "");
+    row.innerHTML = `
+      <div class="bar-label">
+        <div class="name">${t.name}</div>
+        <div class="id">${t.id}</div>
+      </div>
+      <div class="track"><div class="fill ${cls}" data-target="${t.score}"></div></div>
+      <div class="bar-value ${cls}">${t.score}</div>
+    `;
+    chartGrid.appendChild(row);
+  });
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      document.querySelectorAll(".fill").forEach(f => {
+        f.style.width = f.getAttribute("data-target") + "%";
+      });
+    }, 50);
+  });
+
+  // ---- render table ----
+  const tbody = document.getElementById("tableBody");
+  DATA.forEach(t => {
+    const cls = statusClass(t.visibility);
+    const gap = isGap(t.score);
+    const tr = document.createElement("tr");
+    tr.className = "data-row";
+    tr.setAttribute("data-gap", gap ? "true" : "false");
+    tr.innerHTML = `
+      <td class="tech-name">${t.name}</td>
+      <td class="tech-id">${t.id}</td>
+      <td><span class="pill ${cls}">${t.visibility}</span></td>
+      <td class="score-cell ${cls}">${t.score}</td>
+      <td class="evidence-cell">${t.evidence}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // ---- stats ----
+  const count = DATA.length;
+  const avg = Math.round(DATA.reduce((s, t) => s + t.score, 0) / count);
+  const gapCount = DATA.filter(t => isGap(t.score)).length;
+  document.getElementById("statCount").textContent = count;
+  document.getElementById("statAvg").textContent = avg;
+  document.getElementById("statGaps").textContent = gapCount;
+  document.getElementById("gapCount").textContent = `(${gapCount} of ${count})`;
+
+  // ---- filter toggle ----
+  const toggle = document.getElementById("gapToggle");
+  toggle.addEventListener("change", () => {
+    document.body.classList.toggle("show-gaps", toggle.checked);
+    document.body.classList.toggle("no-gap-rows", toggle.checked && gapCount === 0);
+  });
+</script>
+</body>
+</html>

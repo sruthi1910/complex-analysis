@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Attack Progression Timeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F1720;
+    --surface:#161F2B;
+    --surface-2:#1D2838;
+    --surface-3:#243247;
+    --border:#2A3647;
+    --text:#E6EDF3;
+    --text-muted:#8B98A8;
+    --text-faint:#5B6B7E;
+    --accent:#3FD1C7;
+    --accent-dim:rgba(63,209,199,0.14);
+
+    --endpoint:#5B9DFF;
+    --endpoint-bg:rgba(91,157,255,0.14);
+    --cloud:#B18CFF;
+    --cloud-bg:rgba(177,140,255,0.15);
+    --unknown:#98A6B8;
+    --unknown-bg:rgba(152,166,184,0.12);
+
+    --font-ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --font-mono:'JetBrains Mono','Courier New',monospace;
+  }
+  :root[data-theme="light"]{
+    --bg:#F3F5F8;
+    --surface:#FFFFFF;
+    --surface-2:#F0F3F7;
+    --surface-3:#E6EAF0;
+    --border:#DCE2EA;
+    --text:#161F2B;
+    --text-muted:#5B6B7E;
+    --text-faint:#8B98A8;
+    --accent:#0E8E85;
+    --accent-dim:rgba(14,142,133,0.1);
+    --endpoint:#2563EB;
+    --endpoint-bg:rgba(37,99,235,0.1);
+    --cloud:#7C3AED;
+    --cloud-bg:rgba(124,58,237,0.1);
+    --unknown:#64748B;
+    --unknown-bg:rgba(100,116,139,0.1);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-ui);
+    -webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
+
+  .wrap{max-width:1000px; margin:0 auto; padding:44px 24px 56px;}
+
+  .eyebrow{font-family:var(--font-mono); font-size:12.5px; color:var(--accent); margin:0 0 10px;}
+  h1{font-size:clamp(24px,4vw,32px); font-weight:800; letter-spacing:-0.01em; margin:0 0 10px;}
+  .lede{color:var(--text-muted); font-size:15px; line-height:1.55; max-width:64ch; margin:0 0 28px;}
+
+  /* ---------- legend + controls bar ---------- */
+  .toolbar{
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:14px;
+    margin-bottom:14px;
+  }
+  .legend{display:flex; align-items:center; gap:18px; flex-wrap:wrap;}
+  .legend-item{display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--text-muted);}
+  .swatch{width:11px; height:11px; border-radius:3px; flex:none;}
+  .swatch.endpoint{background:var(--endpoint);}
+  .swatch.cloud{background:var(--cloud);}
+  .swatch.unknown{background:transparent; border:1.5px dashed var(--unknown);}
+
+  .zoom-controls{display:flex; align-items:center; gap:6px;}
+  .zoom-btn{
+    width:30px; height:30px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-family:var(--font-mono);
+    font-size:15px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .zoom-btn:hover{background:var(--surface-2); border-color:var(--accent);}
+  .zoom-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .zoom-level{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-faint);
+    min-width:44px;
+    text-align:center;
+  }
+  .zoom-reset{
+    font-size:12px;
+    color:var(--accent);
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:4px 2px;
+    font-family:var(--font-ui);
+  }
+  .zoom-reset:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  .hint{font-size:12px; color:var(--text-faint); margin:0 0 18px;}
+
+  /* ---------- timeline ---------- */
+  .timeline-shell{
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:var(--surface);
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:0 0 4px;
+  }
+  .timeline-track{
+    position:relative;
+    height:260px;
+    min-width:100%;
+  }
+  .axis-line{
+    position:absolute;
+    left:0; right:0; top:130px;
+    height:2px;
+    background:var(--border);
+  }
+  .tick{
+    position:absolute;
+    top:120px;
+    width:1px; height:20px;
+    background:var(--border);
+  }
+  .tick-label{
+    position:absolute;
+    top:144px;
+    transform:translateX(-50%);
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    color:var(--text-faint);
+    white-space:nowrap;
+  }
+
+  .segment{
+    position:absolute;
+    top:124px;
+    height:12px;
+    border-radius:6px;
+    transition:left .35s ease, width .35s ease, opacity .2s ease;
+  }
+  .segment.endpoint{background:var(--endpoint); opacity:.9;}
+  .segment.cloud{background:var(--cloud); opacity:.9;}
+  .segment.unknown{
+    background:repeating-linear-gradient(90deg, var(--unknown), var(--unknown) 6px, transparent 6px, transparent 11px);
+    opacity:.8;
+  }
+
+  .marker{
+    position:absolute;
+    top:130px;
+    transform:translate(-50%,-50%);
+    width:16px; height:16px;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+    padding:0;
+    transition:left .35s ease, transform .15s ease, box-shadow .15s ease;
+    z-index:2;
+  }
+  .marker.endpoint{background:var(--endpoint); box-shadow:0 0 0 4px var(--endpoint-bg);}
+  .marker.cloud{background:var(--cloud); box-shadow:0 0 0 4px var(--cloud-bg);}
+  .marker.unknown{background:var(--surface); border:2px dashed var(--unknown); box-shadow:0 0 0 4px var(--unknown-bg);}
+  .marker:hover{transform:translate(-50%,-50%) scale(1.25);}
+  .marker:focus-visible{outline:2px solid var(--accent); outline-offset:3px;}
+  .marker.active{transform:translate(-50%,-50%) scale(1.35);}
+  .marker.active::after{
+    content:"";
+    position:absolute; inset:-6px;
+    border-radius:50%;
+    border:2px solid var(--accent);
+  }
+
+  .stem{
+    position:absolute;
+    width:1px;
+    background:var(--border);
+    transition:left .35s ease, height .35s ease, top .35s ease;
+    z-index:1;
+  }
+
+  .event-tag{
+    position:absolute;
+    transform:translateX(-50%);
+    width:128px;
+    text-align:center;
+    transition:left .35s ease;
+  }
+  .event-tag .time{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    font-weight:700;
+    margin-bottom:2px;
+  }
+  .event-tag .time.endpoint{color:var(--endpoint);}
+  .event-tag .time.cloud{color:var(--cloud);}
+  .event-tag .time.unknown{color:var(--unknown);}
+  .event-tag .label{
+    font-size:11px;
+    line-height:1.3;
+    color:var(--text-muted);
+  }
+
+  /* ---------- detail panel ---------- */
+  .detail-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin:30px 0 14px; gap:16px; flex-wrap:wrap;
+  }
+  .detail-head h2{font-size:17px; font-weight:700; margin:0;}
+  .detail-nav{display:flex; gap:8px;}
+  .nav-btn{
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-muted);
+    border-radius:8px;
+    padding:6px 12px;
+    font-size:12.5px;
+    font-family:var(--font-ui);
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease;
+  }
+  .nav-btn:hover{background:var(--surface-2); color:var(--text);}
+  .nav-btn:disabled{opacity:.35; cursor:default;}
+  .nav-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  .detail-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:24px 26px;
+  }
+  .detail-top{display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;}
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 10px; border-radius:999px;
+    font-size:11.5px; font-weight:600;
+  }
+  .pill::before{content:""; width:6px; height:6px; border-radius:50%;}
+  .pill.endpoint{color:var(--endpoint); background:var(--endpoint-bg);}
+  .pill.endpoint::before{background:var(--endpoint);}
+  .pill.cloud{color:var(--cloud); background:var(--cloud-bg);}
+  .pill.cloud::before{background:var(--cloud);}
+  .pill.unknown{color:var(--unknown); background:var(--unknown-bg);}
+  .pill.unknown::before{background:var(--unknown); border:1px dashed var(--unknown); background:transparent;}
+  .detail-time{font-family:var(--font-mono); font-size:13px; color:var(--text-faint);}
+
+  .detail-title{font-size:18px; font-weight:700; margin:0 0 10px; line-height:1.35;}
+  .detail-meta{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+  .meta-chip{
+    font-size:12px;
+    font-family:var(--font-mono);
+    color:var(--text-muted);
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:3px 8px;
+  }
+  .detail-desc{font-size:14px; line-height:1.6; color:var(--text-muted); margin:0 0 18px; max-width:68ch;}
+
+  .detail-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .detail-field dt{
+    font-size:11px; text-transform:none; color:var(--text-faint);
+    margin-bottom:5px;
+  }
+  .detail-field dd{margin:0; font-size:13.5px; line-height:1.5;}
+  .detail-field.evidence dd{font-family:var(--font-mono); font-size:12.5px;}
+
+  footer{
+    margin-top:36px; padding-top:16px; border-top:1px solid var(--border);
+    color:var(--text-faint); font-size:12px; line-height:1.6;
+  }
+
+  @media (max-width:640px){
+    .wrap{padding:30px 16px 44px;}
+    .detail-grid{grid-template-columns:1fr;}
+    .event-tag{width:96px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Incident reconstruction</p>
+  <h1>Attack progression</h1>
+  <p class="lede">2021-08-02, all times UTC. On-premises activity moves into the cloud across a ten-minute gap with no corroborating telemetry.</p>
+
+  <div class="toolbar">
+    <div class="legend">
+      <span class="legend-item"><span class="swatch endpoint"></span>Endpoint</span>
+      <span class="legend-item"><span class="swatch cloud"></span>Cloud</span>
+      <span class="legend-item"><span class="swatch unknown"></span>Unknown / blind spot</span>
+    </div>
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoomOut" aria-label="Zoom out">−</button>
+      <span class="zoom-level" id="zoomLevel">100%</span>
+      <button class="zoom-btn" id="zoomIn" aria-label="Zoom in">+</button>
+      <button class="zoom-reset" id="zoomReset">Reset</button>
+    </div>
+  </div>
+  <p class="hint">Zoom in to spread out the cloud sequence between 13:25 and 13:32 — four events land within seven minutes.</p>
+
+  <div class="timeline-shell">
+    <div class="timeline-track" id="track"></div>
+  </div>
+
+  <div class="detail-head">
+    <h2>Event detail</h2>
+    <div class="detail-nav">
+      <button class="nav-btn" id="prevBtn">← Previous</button>
+      <button class="nav-btn" id="nextBtn">Next →</button>
+    </div>
+  </div>
+  <div class="detail-card" id="detailCard"></div>
+
+  <footer>
+    Times reflect the investigation's correlated endpoint and cloud logs. The 13:15–13:25 window has no telemetry in either source; it is shown to scale, not inferred.
+  </footer>
+
+</div>
+
+<script>
+  const EVENTS = [
+    {
+      id: 1, type: "point", category: "endpoint",
+      start: 0, end: 0, time: "13:05:32",
+      label: "AD FS config DB dumped",
+      title: "AD FS configuration database dumped on ADFS01",
+      meta: ["Host: ADFS01", "Account: wardog"],
+      desc: "PowerShell on ADFS01 connected to the AD FS configuration database (WID) and dumped ServiceSettingsData, the AD FS token-signing configuration.",
+      evidence: "Sysmon Event ID 18; WID audit event 33205",
+      technique: "T1552.004 — Unsecured Credentials: Private Keys"
+    },
+    {
+      id: 2, type: "range", category: "endpoint",
+      start: 367, end: 459, time: "13:11:39–13:13:11",
+      label: "DKM key read ×3",
+      title: "DKM key read from Active Directory on DC01",
+      meta: ["Host: DC01", "Account: wardog", "3 reads"],
+      desc: "The DKM master key, stored in the thumbnailPhoto attribute, was read on DC01 three times during this window — the key needed to decrypt the configuration dumped minutes earlier.",
+      evidence: "Windows Security Event 4662 (×3)",
+      technique: "T1552.004 / T1555 — Private Keys / Credentials from Password Stores"
+    },
+    {
+      id: 3, type: "range", category: "unknown",
+      start: 568, end: 1168, time: "13:15–13:25",
+      label: "Blind spot",
+      title: "Blind spot: how the attacker reached the cloud account",
+      meta: ["Duration: ~10 min", "No telemetry"],
+      desc: "No telemetry exists for this window in either the endpoint or cloud data. A sign-in to Azure AD as pgustavo is inferred to link the two phases, but it is not directly observed — a forged token and the use of real credentials are both still possible.",
+      evidence: "None — gap in available logs",
+      technique: "T1606.002 — Forge Web Credentials: SAML Tokens (Low confidence; not confirmed over real-credential use)"
+    },
+    {
+      id: 4, type: "point", category: "cloud",
+      start: 1180, end: 1180, time: "13:25:12",
+      label: "Mail.ReadWrite granted",
+      title: "SimuLandApp updated to request Mail.ReadWrite",
+      meta: ["App: SimuLandApp"],
+      desc: "The application SimuLandApp was updated to request the Microsoft Graph Mail.ReadWrite permission.",
+      evidence: "Microsoft Graph / Entra ID audit log",
+      technique: "T1098.003 — Account Manipulation: Additional Cloud Roles"
+    },
+    {
+      id: 5, type: "point", category: "cloud",
+      start: 1308, end: 1308, time: "13:27:20",
+      label: "Tenant-wide consent",
+      title: "Tenant-wide (AllPrincipals) consent granted",
+      meta: ["Scope: User.Read, Mail.ReadWrite"],
+      desc: "A delegated grant of User.Read and Mail.ReadWrite was recorded with ConsentType AllPrincipals — tenant-wide consent, not limited to one mailbox.",
+      evidence: "Microsoft Graph / Entra ID audit log",
+      technique: "T1098.003 — Account Manipulation: Additional Cloud Roles"
+    },
+    {
+      id: 6, type: "point", category: "cloud",
+      start: 1433, end: 1433, time: "13:29:25",
+      label: "Backdoor secret added",
+      title: "Backdoor secret SimuLandCreds added to SimuLandApp",
+      meta: ["KeyId: 59eaeebc-…"],
+      desc: "A client secret named SimuLandCreds was added to SimuLandApp — a credential that would survive a password reset on the compromised account.",
+      evidence: "Microsoft Graph / Entra ID audit log",
+      technique: "T1098.001 — Account Manipulation: Additional Cloud Credentials"
+    },
+    {
+      id: 7, type: "point", category: "cloud",
+      start: 1595, end: 1595, time: "13:32:07",
+      label: "Inbox read",
+      title: "pgustavo's Inbox read via Microsoft Graph",
+      meta: ["7 messages", "ClientAppId: 5a95e683-…"],
+      desc: "SimuLandApp accessed 7 messages in pgustavo's Inbox via Graph REST calls. Activity continued to approximately 13:41.",
+      evidence: "Unified Audit Log — MailItemsAccessed",
+      technique: "T1114.002 — Remote Email Collection (also T1550.001, Application Access Token — Medium confidence link to SimuLandApp)"
+    }
+  ];
+
+  const RANGE_START = -60;
+  const RANGE_END = 1655;
+  const RANGE_SECONDS = RANGE_END - RANGE_START;
+  const BASE_PXPS = 0.5;
+  const H_PAD = 40;
+  const TICK_CANDIDATES = [5, 10, 15, 30, 60, 120, 300, 600];
+
+  const BASE_H = 13, BASE_M = 5, BASE_S = 32;
+  function timeAt(offsetSeconds){
+    let total = BASE_H*3600 + BASE_M*60 + BASE_S + offsetSeconds;
+    total = ((total % 86400) + 86400) % 86400;
+    const h = Math.floor(total/3600), m = Math.floor((total%3600)/60), s = Math.floor(total%60);
+    return {h,m,s};
+  }
+  function fmt(t, withSeconds){
+    const p = n => String(n).padStart(2,"0");
+    return withSeconds ? `${p(t.h)}:${p(t.m)}:${p(t.s)}` : `${p(t.h)}:${p(t.m)}`;
+  }
+
+  let zoom = 1;
+  let activeId = 1;
+
+  const track = document.getElementById("track");
+  const shell = document.querySelector(".timeline-shell");
+
+  function pxps(){ return BASE_PXPS * zoom; }
+  function xFor(offsetSeconds){ return H_PAD + (offsetSeconds - RANGE_START) * pxps(); }
+
+  function pickTickInterval(){
+    const p = pxps();
+    for (const sec of TICK_CANDIDATES){ if (sec*p >= 64) return sec; }
+    return TICK_CANDIDATES[TICK_CANDIDATES.length-1];
+  }
+
+  function render(){
+    const computed = H_PAD*2 + RANGE_SECONDS*pxps();
+    const width = Math.max(computed, shell.clientWidth);
+    track.style.width = width + "px";
+    track.innerHTML = "";
+
+    const axis = document.createElement("div");
+    axis.className = "axis-line";
+    axis.style.left = H_PAD + "px";
+    axis.style.width = (width - H_PAD*2) + "px";
+    track.appendChild(axis);
+
+    const interval = pickTickInterval();
+    const withSeconds = interval < 60;
+    let tickStart = Math.ceil(RANGE_START/interval)*interval;
+    for (let t = tickStart; t <= RANGE_END; t += interval){
+      const x = xFor(t);
+      const tick = document.createElement("div");
+      tick.className = "tick";
+      tick.style.left = x + "px";
+      track.appendChild(tick);
+      const lbl = document.createElement("div");
+      lbl.className = "tick-label";
+      lbl.style.left = x + "px";
+      lbl.textContent = fmt(timeAt(t), withSeconds);
+      track.appendChild(lbl);
+    }
+
+    EVENTS.forEach((ev, i) => {
+      const xStart = xFor(ev.start);
+      const xEnd = xFor(ev.end);
+      const xMid = (xStart + xEnd) / 2;
+
+      if (ev.type === "range"){
+        const seg = document.createElement("div");
+        seg.className = "segment " + ev.category;
+        seg.style.left = xStart + "px";
+        seg.style.width = Math.max(xEnd - xStart, 4) + "px";
+        track.appendChild(seg);
+      }
+
+      const above = i % 2 === 0;
+      const stem = document.createElement("div");
+      stem.className = "stem";
+      stem.style.left = xMid + "px";
+      stem.style.top = above ? "72px" : "138px";
+      stem.style.height = "50px";
+      track.appendChild(stem);
+
+      const marker = document.createElement("button");
+      marker.className = "marker " + ev.category + (ev.id === activeId ? " active" : "");
+      marker.style.left = xMid + "px";
+      marker.setAttribute("aria-label", ev.time + " — " + ev.title);
+      marker.dataset.id = ev.id;
+      marker.addEventListener("click", () => selectEvent(ev.id));
+      track.appendChild(marker);
+
+      const tag = document.createElement("div");
+      tag.className = "event-tag";
+      tag.style.left = xMid + "px";
+      tag.style.top = above ? "16px" : "160px";
+      tag.innerHTML = `<div class="time ${ev.category}">${ev.time}</div><div class="label">${ev.label}</div>`;
+      track.appendChild(tag);
+    });
+
+    document.getElementById("zoomLevel").textContent = Math.round(zoom*100) + "%";
+  }
+
+  function renderDetail(){
+    const ev = EVENTS.find(e => e.id === activeId);
+    const card = document.getElementById("detailCard");
+    const metaHtml = ev.meta.map(m => `<span class="meta-chip">${m}</span>`).join("");
+    card.innerHTML = `
+      <div class="detail-top">
+        <span class="pill ${ev.category}">${ev.category === "unknown" ? "Unknown" : ev.category[0].toUpperCase()+ev.category.slice(1)}</span>
+        <span class="detail-time">${ev.time}</span>
+      </div>
+      <h3 class="detail-title">${ev.title}</h3>
+      <div class="detail-meta">${metaHtml}</div>
+      <p class="detail-desc">${ev.desc}</p>
+      <dl class="detail-grid">
+        <div class="detail-field evidence"><dt>Evidence</dt><dd>${ev.evidence}</dd></div>
+        <div class="detail-field"><dt>ATT&CK technique</dt><dd>${ev.technique}</dd></div>
+      </dl>
+    `;
+    document.getElementById("prevBtn").disabled = activeId === EVENTS[0].id;
+    document.getElementById("nextBtn").disabled = activeId === EVENTS[EVENTS.length-1].id;
+  }
+
+  function selectEvent(id){
+    activeId = id;
+    track.querySelectorAll(".marker").forEach(m => {
+      m.classList.toggle("active", Number(m.dataset.id) === id);
+    });
+    renderDetail();
+  }
+
+  document.getElementById("prevBtn").addEventListener("click", () => {
+    const idx = EVENTS.findIndex(e => e.id === activeId);
+    if (idx > 0) selectEvent(EVENTS[idx-1].id);
+  });
+  document.getElementById("nextBtn").addEventListener("click", () => {
+    const idx = EVENTS.findIndex(e => e.id === activeId);
+    if (idx < EVENTS.length-1) selectEvent(EVENTS[idx+1].id);
+  });
+
+  function setZoom(z){
+    zoom = Math.min(8, Math.max(0.5, z));
+    render();
+  }
+  document.getElementById("zoomIn").addEventListener("click", () => setZoom(zoom*1.5));
+  document.getElementById("zoomOut").addEventListener("click", () => setZoom(zoom/1.5));
+  document.getElementById("zoomReset").addEventListener("click", () => setZoom(1));
+
+  render();
+  renderDetail();
+</script>
+</body>
+</html>
